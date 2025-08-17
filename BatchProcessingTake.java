@@ -36,36 +36,28 @@ class BatchDispatcher{
     Thread executionThread = new Thread(() -> {
       while (true) {
         try {
-          batch.clear();
+          FutureTask<String> firstJob = queue.take();
           long startTime = System.currentTimeMillis();
-          FutureTask<String> firstJob = queue.poll(timeOut, TimeUnit.SECONDS);
-          if (firstJob != null) {
-            batch.add(firstJob);
-          }
-          while (batch.size() < batchSize) {
-            long elapsed = (System.currentTimeMillis() - startTime) / 1000;
+          batch.add(firstJob);
+          while(batch.size() < batchSize){
+            long elapsed = (System.currentTimeMillis() - startTime)/1000;
             long remaining = timeOut - elapsed;
-            if (remaining <= 0) break;
-            FutureTask<String> moreJob = queue.poll(remaining, TimeUnit.SECONDS);
-            if (moreJob != null) {
-              batch.add(moreJob);
+            if(remaining <= 0) break;
+            FutureTask<String> job = queue.poll(remaining, TimeUnit.SECONDS);
+            if(job != null){
+              batch.add(job);
             }
           }
-          if (!batch.isEmpty()) {
+          if(!batch.isEmpty()){
             for (FutureTask<String> task : batch) {
               executor.execute(task);
             }
           }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          break;
-        } catch (Exception e) {
+        }catch (Exception e) {
           e.printStackTrace();
         }
       }
     });
-
-
     executionThread.setDaemon(true);
     executionThread.start();
   }
@@ -87,7 +79,7 @@ class BatchDispatcher{
 }
 
 
-public class BatchProcessing{
+public class BatchProcessingTake{
   public static void main(String arg[]){
     BatchDispatcher dispatcher = new BatchDispatcher();
     List<FutureTask<String>> futures = new ArrayList<>();
